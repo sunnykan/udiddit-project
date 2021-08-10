@@ -5,7 +5,6 @@ CREATE TABLE user_account(
     username VARCHAR(25) NOT NULL,
     UNIQUE(username),
     CONSTRAINT user_account_pkey PRIMARY KEY(id)
-
 );
 
 -- The user name cannot be empty.
@@ -60,6 +59,22 @@ CHECK (
         num_nonnulls(url, text_content) = 1
 );
 
+-- trim fields in bad_posts and bad_comments table
+-- based on field length constraints
+-- will this introduce duplication?
+-- why not do it on insertion?
+UPDATE bad_posts 
+SET username=LEFT(username, 25);
+
+UPDATE bad_posts
+SET topic=LEFT(topic, 30);
+
+UPDATE bad_posts
+SET title=LEFT(title, 100);
+
+UPDATE bad_comments
+SET username=LEFT(username, 25);
+
 -- create a votes view - to be dropped at the end
 CREATE VIEW vote_view 
 AS 
@@ -82,6 +97,7 @@ SELECT DISTINCT(username)
 FROM bad_comments
 );
 
+-- account for the users in the votes table 
 INSERT INTO user_account(username)
 (SELECT username
 FROM vote_view
@@ -103,7 +119,7 @@ INSERT INTO post(id, topic_id, user_id, title, url, text_content)
 SELECT bp.id id, 
     t.id topic_id, 
     ua.id user_id,
-    bp.title::varchar(100) title, 
+    bp.title title, 
     bp.url url, 
     bp.text_content text_content
 FROM bad_posts bp
@@ -112,7 +128,8 @@ ON bp.username = ua.username
 JOIN topic t
 ON bp.topic = t.name;
 
-ALTER TABLE post ADD CONSTRAINT post_pkey PRIMARY KEY(id);
+ALTER TABLE post 
+ADD CONSTRAINT post_pkey PRIMARY KEY(id);
 
 DROP TABLE IF EXISTS vote;
 
@@ -138,6 +155,14 @@ SELECT vw.post_id post_id, ua.id user_id, vw.vote vote
 FROM vote_view vw
 JOIN user_account ua
 ON vw.username = ua.username;
+
+ALTER TABLE vote
+ADD CONSTRAINT one_vote_one_user 
+UNIQUE(post_id, user_id);
+
+ALTER TABLE vote
+ADD CONSTRAINT vote_choice
+CHECK (vote in (1, -1));
 
 DROP TABLE IF EXISTS comment;
 
@@ -174,5 +199,3 @@ ON ua.username = bc.username;
 
 
 DROP VIEW vote_view;
-
-
