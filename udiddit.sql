@@ -9,7 +9,8 @@ CREATE TABLE user_account(
 
 -- The user name cannot be empty.
 ALTER TABLE user_account
-ADD CHECK(LENGTH(TRIM(username)) > 0);
+ADD CONSTRAINT username_non_empty
+CHECK (NULLIF(TRIM(username), '') IS NOT NULL);
 
 DROP TABLE IF EXISTS topic;
 
@@ -27,12 +28,13 @@ CREATE TABLE topic(
 
 -- The topic's name cannot be empty.
 ALTER TABLE topic
-ADD CHECK(LENGTH(TRIM(name)) > 0);
+ADD CONSTRAINT topic_title_non_empty
+CHECK (NULLIF(TRIM(name), '') IS NOT NULL);
 
 DROP TABLE IF EXISTS post;
 
 CREATE TABLE post(
-    id INTEGER,
+    id INTEGER NOT NULL,
     topic_id INTEGER,
     user_id INTEGER,
     title VARCHAR(100) NOT NULL,
@@ -50,13 +52,17 @@ CREATE TABLE post(
 
 -- The title of a post cannot be empty.
 ALTER TABLE post
-ADD CHECK(LENGTH(TRIM(title)) > 0);
+ADD CONSTRAINT post_title_non_empty
+CHECK (NULLIF(TRIM(title), '') IS NOT NULL);
 
 -- Posts should contain either a URL or a text content, but not both.
 ALTER TABLE post
-ADD CONSTRAINT url_xor_content
+ADD CONSTRAINT url_text_context_one_nonempty
 CHECK (
-        num_nonnulls(url, text_content) = 1
+    (NULLIF(TRIM(url), '') IS NULL 
+        OR NULLIF(TRIM(text_content), '') IS NULL) 
+    AND NOT (NULLIF(TRIM(url), '') IS NULL 
+        AND NULLIF(TRIM(text_content), '') IS NULL)
 );
 
 -- trim fields in bad_posts and bad_comments table
@@ -128,8 +134,10 @@ ON bp.username = ua.username
 JOIN topic t
 ON bp.topic = t.name;
 
+-- set primary key for post table
 ALTER TABLE post 
-ADD CONSTRAINT post_pkey PRIMARY KEY(id);
+ADD CONSTRAINT post_pkey 
+PRIMARY KEY(id);
 
 DROP TABLE IF EXISTS vote;
 
@@ -188,7 +196,8 @@ CREATE TABLE comment(
 );
 
 ALTER TABLE comment
-ADD CHECK(LENGTH(TRIM(text_content)) > 0);
+ADD CONSTRAINT comment_text_content_non_empty
+CHECK (NULLIF(TRIM(text_content), '') IS NOT NULL);
 
 -- Populate table comment
 INSERT INTO comment(post_id, user_id, text_content)
