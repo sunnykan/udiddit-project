@@ -159,7 +159,9 @@ CREATE TABLE vote(
 
 -- Populate table vote
 INSERT INTO vote(post_id, user_id, vote)
-SELECT vw.post_id post_id, ua.id user_id, vw.vote vote
+SELECT vw.post_id post_id, 
+    ua.id user_id, 
+    vw.vote vote
 FROM vote_view vw
 JOIN user_account ua
 ON vw.username = ua.username;
@@ -175,12 +177,11 @@ CHECK (vote in (1, -1));
 DROP TABLE IF EXISTS comment;
 
 CREATE TABLE comment(
-    id SERIAL,
+    id INTEGER NOT NULL,
     post_id INTEGER,
     user_id INTEGER,
     text_content TEXT NOT NULL,
     parent_id INTEGER,
-    CONSTRAINT content_pkey PRIMARY KEY(id),
     CONSTRAINT fk_post
         FOREIGN KEY(post_id)
             REFERENCES post(id)
@@ -195,16 +196,24 @@ CREATE TABLE comment(
             ON DELETE CASCADE
 );
 
+
 ALTER TABLE comment
 ADD CONSTRAINT comment_text_content_non_empty
 CHECK (NULLIF(TRIM(text_content), '') IS NOT NULL);
 
 -- Populate table comment
-INSERT INTO comment(post_id, user_id, text_content)
-SELECT bc.post_id post_id, ua.id user_id, bc.text_content text_content
+INSERT INTO comment(id, post_id, user_id, text_content)
+SELECT bc.id id,
+    bc.post_id post_id, 
+    ua.id user_id, 
+    bc.text_content text_content
 FROM user_account ua
 JOIN bad_comments bc
 ON ua.username = bc.username;
 
+-- set primary key for comment table
+ALTER TABLE comment 
+ADD CONSTRAINT comment_pkey 
+PRIMARY KEY(id);
 
 DROP VIEW vote_view;
