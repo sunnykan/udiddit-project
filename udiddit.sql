@@ -66,11 +66,11 @@ CREATE TABLE vote(
     id SERIAL,
     post_id INTEGER NOT NULL,
     user_id INTEGER,
-    vote SMALLINT NOT NULL,
+    vote_cast SMALLINT NOT NULL,
     CONSTRAINT one_vote_one_user 
         UNIQUE(post_id, user_id),
     CONSTRAINT vote_choice
-        CHECK (vote in (1, -1)),
+        CHECK (vote_cast in (1, -1)),
     CONSTRAINT vote_pkey PRIMARY KEY(id),   
     CONSTRAINT fk_user
         FOREIGN KEY(user_id)
@@ -88,7 +88,7 @@ CREATE TABLE comment(
     id INTEGER,
     post_id INTEGER NOT NULL,
     user_id INTEGER,
-    parent_id INTEGER, -- should be NULL but we don't have data
+    parent_id INTEGER, -- should be NOT NULL but we don't have data
     text_content TEXT,
     created_at TIMESTAMP WITH TIME ZONE,
     CONSTRAINT comment_text_content_non_empty
@@ -112,14 +112,14 @@ CREATE TABLE comment(
 -- create a votes view - to be dropped at the end
 CREATE VIEW vote_view 
 AS 
-SELECT id as post_id, 
-    regexp_split_to_table(upvotes, ',') as username,
-    1 as vote
+SELECT id post_id, 
+    regexp_split_to_table(upvotes, ',') username,
+    1 vote_cast
 FROM bad_posts
 UNION
-SELECT id as post_id,
-    regexp_split_to_table(downvotes, ',') as username,
-    -1 as vote
+SELECT id post_id,
+    regexp_split_to_table(downvotes, ',') username,
+    -1 vote_cast
 FROM bad_posts;
 
 -- populate user_account table
@@ -156,16 +156,16 @@ ON bp.username = ua.username
 JOIN topic t
 ON bp.topic = t.topic_name;
 
--- Populate table vote
-INSERT INTO vote(post_id, user_id, vote)
+-- populate table vote
+INSERT INTO vote(post_id, user_id, vote_cast)
 SELECT vw.post_id post_id, 
     ua.id user_id, 
-    vw.vote vote
+    vw.vote_cast vote
 FROM vote_view vw
 JOIN user_account ua
 ON vw.username = ua.username;
 
--- Populate table comment
+-- populate table comment
 INSERT INTO comment(id, post_id, user_id, text_content)
 SELECT bc.id id,
     bc.post_id post_id, 
@@ -192,6 +192,7 @@ CREATE INDEX index_url_post ON post(url);
 -- table: vote
 CREATE INDEX index_fk_post_vote ON vote(post_id);
 CREATE INDEX index_fk_user_vote ON vote(user_id);
+CREATE INDEX index_post_vote ON vote(post_id, vote_cast);
 
 -- table: comment
 CREATE INDEX index_fk_post_comment ON comment(post_id);
